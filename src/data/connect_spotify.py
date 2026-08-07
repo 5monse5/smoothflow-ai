@@ -8,7 +8,8 @@ cruzando tus canciones con un dataset público de referencia.
 
 Este script:
 1. Se autentica con tu cuenta de Spotify (OAuth 2.0).
-2. Extrae tus Top Tracks y las canciones de tus playlists guardadas.
+2. Extrae tus Top Tracks (en 3 rangos de tiempo) y las canciones de TUS
+   playlists (las que vos creaste - las de otros curadores no son accesibles).
 3. Guarda la metadata básica (nombre, artista, id) en data/my_tracks.csv.
 
 Cómo correrlo:
@@ -47,19 +48,43 @@ def get_spotify_client() -> spotipy.Spotify:
 
 
 def get_top_tracks(sp: spotipy.Spotify, limit: int = 50) -> list[dict]:
-    """Trae tus canciones más escuchadas (mediano plazo = últimos ~6 meses)."""
-    results = sp.current_user_top_tracks(limit=limit, time_range="medium_term")
-    return results["items"]
-
-
-def get_saved_playlist_tracks(sp: spotipy.Spotify, max_playlists: int = 10) -> list[dict]:
-    """Trae canciones de tus playlists guardadas (hasta max_playlists playlists)."""
+    """Trae tus canciones más escuchadas en los 3 rangos de tiempo que ofrece Spotify
+    (últimas ~4 semanas, ~6 meses, y varios años), para maximizar la cantidad de
+    canciones únicas. A diferencia de las playlists de otros curadores, esto
+    siempre es accesible porque es 100% tu propia data.
+    """
     tracks = []
-    playlists = sp.current_user_playlists(limit=max_playlists)
+    for time_range in ["short_term", "medium_term", "long_term"]:
+        results = sp.current_user_top_tracks(limit=limit, time_range=time_range)
+        tracks.extend(results["items"])
+    return tracks
 
-    for playlist in playlists["items"]:
+
+def get_saved_playlist_tracks(sp: spotipy.Spotify, max_playlists: int = 20) -> list[dict]:
+    """Trae canciones de TUS playlists (las que vos creaste), hasta max_playlists.
+
+    Nota: las playlists de otros curadores que solo seguís (no creaste) no se
+    pueden leer por API en apps nuevas desde los cambios de Spotify de nov. 2024,
+    así que las filtramos de antemano en vez de intentar y fallar.
+    """
+    tracks = []
+    me = sp.current_user()
+    my_user_id = me["id"]
+
+    playlists = sp.current_user_playlists(limit=max_playlists)
+    own_playlists = [p for p in playlists["items"] if p["owner"]["id"] == my_user_id]
+
+    print(f"   ({len(own_playlists)} de {len(playlists['items'])} playlists guardadas son tuyas)")
+
+    for playlist in own_playlists:
         playlist_id = playlist["id"]
-        results = sp.playlist_items(playlist_id, additional_types=["track"])
+        playlist_name = playlist.get("name", playlist_id)
+        try:
+            results = sp.playlist_items(playlist_id, additional_types=["track"])
+        except spotipy.exceptions.SpotifyException as e:
+            print(f"   ⚠️  Salteando playlist '{playlist_name}' (no accesible por API: {e.http_status})")
+            continue
+
         for item in results["items"]:
             track = item.get("track")
             if track and track.get("id"):
