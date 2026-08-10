@@ -6,8 +6,12 @@ Entrena dos modelos sobre las 32.800 canciones del dataset de referencia
 que quizás no conocías):
 
 1. K-MEANS: agrupa las canciones en "micro-moods" según sonido similar.
-   Se valida con silhouette score en una porción separada de los datos,
-   para confirmar que los grupos son estables y no un artefacto del azar.
+   K=10 está fijado a mano (no se busca automático). Se probó de 4 a 12
+   con silhouette score y K=4 daba el mejor número (0.181), pero con muy
+   pocas opciones de mood para la interfaz. K=10 da mucha mejor variedad
+   (10 moods distintos para elegir en Streamlit) sin perder demasiada
+   calidad de cluster (silhouette 0.162 vs 0.181 de K=4). Decisión tomada
+   y validada, no es un valor provisorio.
 
 2. KNN (K-Nearest Neighbors): motor de búsqueda que, dado un punto
    cualquiera en el espacio de audio features, encuentra las canciones
@@ -35,8 +39,9 @@ from sklearn.preprocessing import StandardScaler
 
 FEATURE_COLUMNS = ["danceability", "energy", "valence", "acousticness", "tempo", "loudness", "speechiness"]
 
-# Rango de K (cantidad de clusters) a probar para elegir el mejor con el método del codo.
-K_RANGE = range(4, 13)
+# K fijado a mano en 10 (más variedad de moods para la interfaz).
+# Ya no se prueba un rango ni se elige automático por silhouette score.
+N_CLUSTERS = 10
 
 MODELS_DIR = "data/models"
 
@@ -48,26 +53,17 @@ def load_data() -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
-def find_best_k(X_scaled: np.ndarray) -> int:
-    """Prueba distintos valores de K y elige el que da mejor silhouette score
-    en una muestra separada (no usada para entrenar), para evitar elegir un K
-    que solo se ve bien sobre los mismos datos con los que se entrenó.
+def report_silhouette(X_scaled: np.ndarray, k: int) -> None:
+    """Informa el silhouette score de K en una porción separada de los datos
+    (no usada para entrenar), solo a modo de referencia/registro - ya NO se
+    usa para decidir K, que está fijado a mano en N_CLUSTERS.
     """
     X_train, X_valid = train_test_split(X_scaled, test_size=0.2, random_state=42)
-
-    print("🔬 Buscando el mejor número de clusters (K)...")
-    scores = {}
-    for k in K_RANGE:
-        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
-        kmeans.fit(X_train)
-        valid_labels = kmeans.predict(X_valid)
-        score = silhouette_score(X_valid, valid_labels)
-        scores[k] = score
-        print(f"   K={k}: silhouette score = {score:.3f}")
-
-    best_k = max(scores, key=scores.get)
-    print(f"✅ Mejor K encontrado: {best_k} (silhouette score = {scores[best_k]:.3f})")
-    return best_k
+    kmeans_check = KMeans(n_clusters=k, random_state=42, n_init=10)
+    kmeans_check.fit(X_train)
+    valid_labels = kmeans_check.predict(X_valid)
+    score = silhouette_score(X_valid, valid_labels)
+    print(f"ℹ️  K={k} fijado a mano (silhouette score de referencia = {score:.3f})")
 
 
 def main():
@@ -79,10 +75,10 @@ def main():
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(df[FEATURE_COLUMNS])
 
-    best_k = find_best_k(X_scaled)
+    report_silhouette(X_scaled, N_CLUSTERS)
 
-    print(f"🎯 Entrenando K-Means final con K={best_k} sobre todo el dataset...")
-    kmeans = KMeans(n_clusters=best_k, random_state=42, n_init=10)
+    print(f"🎯 Entrenando K-Means final con K={N_CLUSTERS} sobre todo el dataset...")
+    kmeans = KMeans(n_clusters=N_CLUSTERS, random_state=42, n_init=10)
     df["cluster"] = kmeans.fit_predict(X_scaled)
 
     print("\n📊 Tamaño de cada cluster:")
@@ -104,7 +100,8 @@ def main():
 
     print(f"\n💾 Modelos guardados en {MODELS_DIR}/")
     print("💾 Dataset con clusters guardado en data/reference_tracks_clustered.csv")
-    print("\n👉 Siguiente paso: Fase 3, la lógica de la rampa de transición.")
+    print("\n👉 Siguiente paso: correr streamlit run src/app/app.py y confirmar")
+    print("   que aparecen 10 moods en el multiselect.")
 
 
 if __name__ == "__main__":
