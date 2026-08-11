@@ -9,7 +9,7 @@ Cómo correrlo:
     streamlit run src/app/app.py
 (Se abre solo en tu navegador en http://localhost:8501)
 """
-
+#python -m streamlit run src/app/app.py (arranque virtualenv)
 import pickle
 import sys
 from pathlib import Path
@@ -176,7 +176,7 @@ if st.session_state.route is not None:
     display = display.rename(columns={"track_name": "Canción", "track_artist": "Artista"})
     st.dataframe(
         display[["Tramo", "Canción", "Artista", "¿Ya la conocías?"]],
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -198,7 +198,7 @@ if st.session_state.route is not None:
         height=350,
         margin=dict(t=20, b=20),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     csv = route.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Descargar ruta (CSV)", csv, "smoothflow_route.csv", "text/csv")
