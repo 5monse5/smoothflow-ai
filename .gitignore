@@ -7,10 +7,13 @@ __pycache__/
 .venv/
 venv/
 
-# Datos generados
-data/*.csv
-data/*.json
-!data/.gitkeep
+# Datos personales (tu historial de Spotify: top tracks + matching).
+# NO hacen falta para que la app funcione públicamente (si faltan, la app
+# arma la ruta solo con el catálogo general) y son privados, así que no
+# se suben.
+data/my_tracks.csv
+data/my_tracks_with_features.csv
+data/demo_route.csv
 
-# Cache de spotipy (tokens de sesión)
+# Cache de spotipy (tokens de sesión - JAMÁS subir esto)
 .cache
