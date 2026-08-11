@@ -4,6 +4,10 @@ DJ Virtual con Machine Learning: genera transiciones suaves entre géneros/moods
 en tus playlists de Spotify, interpolando tempo y energía entre bloques musicales,
 y te deja crear la playlist resultante directamente en tu cuenta de Spotify.
 
+🔗 **Probalo en vivo:** [smoothflow-ai.streamlit.app](https://smoothflow-ai.streamlit.app/)
+(la generación de rutas es libre para cualquiera; crear la playlist real en
+Spotify está protegido con contraseña, ver sección "Deploy" más abajo)
+
 ## ⚠️ Notas importantes sobre la API de Spotify
 
 - Spotify deprecó el endpoint `audio-features` en noviembre de 2024 para apps
@@ -85,6 +89,17 @@ Desde la interfaz podés:
 - Los bloques de permanencia priorizan tus canciones conocidas con un
   "descuento de familiaridad" (no absoluto), para balancear lo conocido con
   el descubrimiento.
+
+## Deploy
+
+La app está desplegada en Streamlit Community Cloud. Como la API de Spotify
+limita a pocos usuarios autorizados por app en modo Development, el deploy
+público usa siempre la cuenta del dueño del proyecto para crear playlists
+reales (protegido con contraseña) — cualquier visitante puede generar y ver
+rutas libremente, pero solo el dueño puede efectivamente crear la playlist
+en Spotify. Si cloná este repo y corrés la app en tu propia máquina con tus
+propias credenciales (ver "Setup" arriba), no tenés esa restricción: podés
+crear playlists en tu cuenta sin ninguna contraseña.
 
 ## Estructura del proyecto
 
