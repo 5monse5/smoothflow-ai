@@ -9,7 +9,8 @@ Cómo correrlo:
     streamlit run src/app/app.py
 (Se abre solo en tu navegador en http://localhost:8501)
 """
-#python -m streamlit run src/app/app.py (arranque virtualenv)
+
+import json
 import pickle
 import sys
 from pathlib import Path
@@ -17,7 +18,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import spotipy
 import streamlit as st
+from spotipy.cache_handler import MemoryCacheHandler
+from spotipy.oauth2 import SpotifyOAuth
 
 # Permite importar las funciones de build_route.py y connect_spotify.py sin duplicar código.
 sys.path.append(str(Path(__file__).resolve().parents[2]))
@@ -27,7 +31,7 @@ from src.models.build_route import (  # noqa: E402
     load_data as load_route_data,
     load_models,
 )
-from src.data.connect_spotify import get_spotify_client  # noqa: E402
+from src.data.connect_spotify import SCOPE, get_spotify_client  # noqa: E402
 
 st.set_page_config(page_title="SmoothFlow AI", page_icon="🎧", layout="centered")
 
@@ -46,9 +50,41 @@ def get_data():
 
 @st.cache_resource
 def get_spotify():
-    """Cliente de Spotify autenticado, reusando el login de la Fase 1
-    (usa el mismo .cache de token guardado por connect_spotify.py, así que
-    normalmente NO te vuelve a pedir que loguees en el navegador)."""
+    """Cliente de Spotify autenticado, SIEMPRE con TU cuenta (Opción A: en
+    el deploy público nadie más puede crear playlists, solo vos).
+
+    - Local (streamlit run en tu máquina): reusa el login de la Fase 1,
+      leyendo el .cache que ya generó connect_spotify.py.
+    - Deploy público (Streamlit Community Cloud): no hay .cache en el
+      servidor, así que usamos un token guardado a mano en Secrets
+      (ver instrucciones en el README, sección "Deploy"). MemoryCacheHandler
+      le pasa ese token a spotipy sin necesitar un archivo en disco.
+    """
+    if "SPOTIFY_TOKEN_INFO" in st.secrets:
+        token_info = json.loads(st.secrets["SPOTIFY_TOKEN_INFO"])
+        auth_manager = SpotifyOAuth(
+            client_id=st.secrets["SPOTIPY_CLIENT_ID"],
+            client_secret=st.secrets["SPOTIPY_CLIENT_SECRET"],
+            redirect_uri=st.secrets["SPOTIPY_REDIRECT_URI"],
+            scope=SCOPE,
+            cache_handler=MemoryCacheHandler(token_info=token_info),
+            open_browser=False,  # nunca intentar abrir navegador/servidor local acá
+        )
+        return spotipy.Spotify(auth_manager=auth_manager)
+
+    if len(st.secrets) > 0:
+        # Hay Secrets configurados (estamos en un deploy, no en tu compu),
+        # pero falta justo SPOTIFY_TOKEN_INFO o está mal pegado. NO caemos
+        # al flujo local (que intentaría abrir un navegador/servidor y
+        # rompe con errores crípticos tipo "Address already in use") -
+        # avisamos claro en vez de eso.
+        raise RuntimeError(
+            "Falta o está mal pegado el secret SPOTIFY_TOKEN_INFO en "
+            "Settings → Secrets de Streamlit Cloud. Revisá que el JSON "
+            "esté completo, en una sola línea, y entre comillas SIMPLES "
+            "rectas ('...'), no comillas tipográficas ('...')."
+        )
+
     return get_spotify_client()
 
 
@@ -209,11 +245,30 @@ if st.session_state.route is not None:
                f"{n_total - n_known} son descubrimientos nuevos.")
 
     st.subheader("3. Creá la playlist en tu cuenta de Spotify")
+
+    # En el deploy público (Streamlit Community Cloud) se configura el
+    # secret APP_PASSWORD para que SOLO el dueño del proyecto pueda crear
+    # playlists reales (si no, cualquier visitante podría llenar tu cuenta
+    # de Spotify de playlists). Corriendo local, sin ese secret, no pide nada.
+    owner_password = st.secrets.get("APP_PASSWORD")
+    if owner_password:
+        entered_password = st.text_input(
+            "Esta demo pública solo permite crear la playlist con la "
+            "contraseña del dueño del proyecto:",
+            type="password",
+        )
+        unlocked = entered_password != "" and entered_password == owner_password
+        if entered_password and not unlocked:
+            st.error("Contraseña incorrecta.")
+    else:
+        unlocked = True
+
     playlist_name = st.text_input(
         "Nombre de la playlist",
         value="SmoothFlow AI - " + " → ".join(selected_labels),
+        disabled=not unlocked,
     )
-    create = st.button("🚀 Crear en Spotify")
+    create = st.button("🚀 Crear en Spotify", disabled=not unlocked)
 
     if create:
         try:
