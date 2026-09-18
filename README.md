@@ -8,6 +8,10 @@ y te deja crear la playlist resultante directamente en tu cuenta de Spotify.
 (la generación de rutas es libre para cualquiera; crear la playlist real en
 Spotify está protegido con contraseña, ver sección "Deploy" más abajo)
 
+<img width="800" alt="Captura de SmoothFlow AI" src="https://github.com/user-attachments/assets/3c445e70-eec8-489a-aef7-cdb5446e2741" />
+
+
+
 ## ⚠️ Notas importantes sobre la API de Spotify
 
 - Spotify deprecó el endpoint `audio-features` en noviembre de 2024 para apps
