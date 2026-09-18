@@ -10,6 +10,10 @@ Spotify está protegido con contraseña, ver sección "Deploy" más abajo)
 
 <img width="800" alt="Captura de SmoothFlow AI" src="https://github.com/user-attachments/assets/3c445e70-eec8-489a-aef7-cdb5446e2741" />
 
+## 🎬 Demo
+
+<img width="800" alt="Demo: generación de ruta en SmoothFlow AI" src="https://github.com/user-attachments/assets/4d8ad57c-ddf1-44e5-b275-339b97b02f4e" />
+
 
 
 ## ⚠️ Notas importantes sobre la API de Spotify
